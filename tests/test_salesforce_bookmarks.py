@@ -1,3 +1,4 @@
+import unittest
 import datetime
 import dateutil.parser
 import pytz
@@ -44,20 +45,25 @@ class SalesforceBookmarks(SalesforceBaseTest):
                                    for stream, bookmark in current_state['bookmarks'].items()}
         stream_to_calculated_state = {stream: "" for stream in self.expected_sync_streams()}
 
+        timedelta_by_stream = {stream: [1,0,0]  # {stream_name: [days, hours, minutes], ...}
+                               for stream in self.expected_streams()}
+        timedelta_by_stream['Account'] = [0, 0, 2]
+
         for stream, state in stream_to_current_state.items():
+            days, hours, minutes = timedelta_by_stream[stream]
+
             # convert state from string to datetime object
             state_as_datetime = dateutil.parser.parse(state)
-            # subtract n days from the state
-            n = 3 if stream in {'Lead', 'Opportunity'} else 1
-            calculated_state_as_datetime = state_as_datetime - datetime.timedelta(days=n)
+            calculated_state_as_datetime = state_as_datetime - datetime.timedelta(days=days, hours=hours, minutes=minutes)
             # convert back to string and format
             calculated_state = datetime.datetime.strftime(calculated_state_as_datetime, "%Y-%m-%dT%H:%M:%S.000000Z")
             stream_to_calculated_state[stream] = calculated_state
 
         return stream_to_calculated_state
 
-
     def test_run(self):
+        self.salesforce_api = 'BULK'
+
         replication_keys = self.expected_replication_keys()
 
         # SYNC 1

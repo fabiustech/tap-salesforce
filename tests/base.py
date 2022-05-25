@@ -7,8 +7,7 @@ import os
 from datetime import timedelta
 from datetime import datetime as dt
 
-import singer
-from tap_tester import connections, menagerie, runner
+from tap_tester import connections, menagerie, runner, logger
 
 
 class SalesforceBaseTest(unittest.TestCase):
@@ -36,10 +35,9 @@ class SalesforceBaseTest(unittest.TestCase):
     FULL_TABLE = "FULL_TABLE"
     START_DATE_FORMAT = "%Y-%m-%dT00:00:00Z"
     BOOKMARK_COMPARISON_FORMAT = "%Y-%m-%dT00:00:00.000000Z"
-
-    LOGGER = singer.get_logger()
-
+    LOGGER = logger.LOGGER
     start_date = ""
+    salesforce_api = ""
 
     @staticmethod
     def tap_name():
@@ -54,12 +52,12 @@ class SalesforceBaseTest(unittest.TestCase):
     def get_properties(self, original: bool = True):
         """Configuration properties required for the tap."""
         return_value = {
-            'start_date': '2017-01-01T00:00:00Z',
-            'instance_url': 'https://cs95.salesforce.com',
+            'start_date': '2020-11-23T00:00:00Z',
+            'instance_url': 'https://singer2-dev-ed.my.salesforce.com',
             'select_fields_by_default': 'true',
-            'quota_percent_total': "80",
-            'api_type': "BULK",
-            'is_sandbox': 'true'
+            'quota_percent_total': '80',
+            'api_type': self.salesforce_api,
+            'is_sandbox': 'false'
         }
 
         if original:
@@ -90,27 +88,44 @@ class SalesforceBaseTest(unittest.TestCase):
             self.REPLICATION_METHOD: self.FULL_TABLE,
         }
 
+        incremental_created_date = {
+            self.REPLICATION_KEYS: {'CreatedDate'},
+            self.PRIMARY_KEYS: {'Id'},
+            self.REPLICATION_METHOD: self.INCREMENTAL,
+        }
+
+        incremental_last_modified = {
+            self.PRIMARY_KEYS: {'Id'},
+            self.REPLICATION_KEYS: {'LastModifiedDate'},
+            self.REPLICATION_METHOD: self.INCREMENTAL,
+        }
         return {
+            'AIApplication': default,  # new
+            'AIApplicationConfig': default,  # new
+            'AIInsightAction': default,  # new
+            'AIInsightFeedback': default,  # new
+            'AIInsightReason': default,  # new
+            'AIInsightValue': default,  # new
+            'AIRecordInsight': default,  # new
             'Account': default,
-            'AccountContactRelation': default,
+            'AccountCleanInfo': default,  # new
             'AccountContactRole': default,
             'AccountFeed': default,
-            'AccountHistory': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'AccountHistory': incremental_created_date,
             'AccountPartner': default,
-            'AccountShare': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'AccountShare': incremental_last_modified,
             'ActionLinkGroupTemplate': default,
             'ActionLinkTemplate': default,
+            'ActiveFeatureLicenseMetric': default,
+            'ActivePermSetLicenseMetric': default,
+            'ActiveProfileMetric': default,
             'AdditionalNumber': default,
+            'AlternativePaymentMethod': default,  # new
+            'AlternativePaymentMethodShare': incremental_last_modified,  # new
             'ApexClass': default,
             'ApexComponent': default,
+            'ApexEmailNotification': default,  # new
+            'ApexLog': default,  # new
             'ApexPage': default,
             'ApexPageInfo': default_full,
             'ApexTestQueueItem': default,
@@ -119,362 +134,439 @@ class SalesforceBaseTest(unittest.TestCase):
             'ApexTestRunResult': default,
             'ApexTestSuite': default,
             'ApexTrigger': default,
+            'ApiAnomalyEventStore': default,  # new
+            'ApiAnomalyEventStoreFeed': default,  # new
+            'ApiEvent': incremental_created_date,  # new
+            'AppAnalyticsQueryRequest': default,  # new
+            'AppDefinition': default_full,
             'AppMenuItem': default,
-            'Approval': default,
+            'AppUsageAssignment': default,  # new
+            'AppointmentAssignmentPolicy': default,  # new
+            'AppointmentScheduleAggr': default,  # new
+            'AppointmentScheduleLog': default,  # new
+            'AppointmentSchedulingPolicy': default,  # new
+            'AppointmentTopicTimeSlot': default,  # new
+            'AppointmentTopicTimeSlotFeed': default,  # new
+            'AppointmentTopicTimeSlotHistory': incremental_created_date,  # new
             'Asset': default,
+            'AssetAction': default,  # new
+            'AssetActionSource': default,  # new
             'AssetFeed': default,
-            'AssetHistory': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'AssetHistory': incremental_created_date,
             'AssetRelationship': default,
             'AssetRelationshipFeed': default,
-            'AssetRelationshipHistory': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
-            'AssetShare': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'AssetRelationshipHistory': incremental_created_date,
+            'AssetShare': incremental_last_modified,
+            'AssetStatePeriod': default,  # new
+            'AssignedResource': default,  # new
+            'AssignedResourceFeed': default,  # new
             'AssignmentRule': default,
             'AssociatedLocation': default,
-            'AssociatedLocationHistory': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
-            'AsyncApexJob': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'AssociatedLocationHistory': incremental_created_date,
+            'AsyncApexJob': incremental_created_date,
+            'AsyncOperationLog': default,  # new
             'Attachment': default,
             'AuraDefinition': default,
             'AuraDefinitionBundle': default,
             'AuraDefinitionBundleInfo': default_full,
-            'AuraDefinitionInfo': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'AuraDefinitionInfo': incremental_last_modified,
             'AuthConfig': default,
             'AuthConfigProviders': default,
-            'AuthSession': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
-            # NB: This stream should be supported and was discoverable up until June 2021
-            # https://developer.salesforce.com/docs/atlas.en-us.api.meta/api/sforce_api_objects_backgroundoperation.htm
-            # 'BackgroundOperation': default,
+            'AuthProvider': incremental_created_date,  # new
+            'AuthSession': incremental_last_modified,
+            'AuthorizationForm': default,
+            'AuthorizationFormConsent': default,
+            'AuthorizationFormConsentHistory': incremental_created_date,
+            'AuthorizationFormConsentShare': incremental_last_modified,
+            'AuthorizationFormDataUse': default,
+            'AuthorizationFormDataUseHistory': incremental_created_date,
+            'AuthorizationFormDataUseShare': incremental_last_modified,
+            'AuthorizationFormHistory': incremental_created_date,
+            'AuthorizationFormShare': incremental_last_modified,
+            'AuthorizationFormText': default,
+            'AuthorizationFormTextFeed': default,
+            'AuthorizationFormTextHistory': incremental_created_date,
+            'BackgroundOperation': default,  # new
             'BrandTemplate': default,
             'BrandingSet': default,
             'BrandingSetProperty': default,
+            'BulkApiResultEventStore': incremental_created_date,  # new
             'BusinessHours': default,
             'BusinessProcess': default,
+            'Calendar': default,
+            'CalendarView': default,
+            'CalendarViewShare': incremental_last_modified,
             'CallCenter': default,
+            'CallCoachingMediaProvider': default,
             'Campaign': default,
             'CampaignFeed': default,
-            'CampaignHistory': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
-            'CampaignInfluenceModel': default,
+            'CampaignHistory': incremental_created_date,
             'CampaignMember': default,
             'CampaignMemberStatus': default,
-            'CampaignShare': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'CampaignShare': incremental_last_modified,
+            'CardPaymentMethod': default,  # new
             'Case': default,
             'CaseComment': default,
             'CaseContactRole': default,
             'CaseFeed': default,
-            'CaseHistory': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
-            'CaseShare': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'CaseHistory': incremental_created_date,
+            'CaseMilestone': default,  # new
+            'CaseShare': incremental_last_modified,
             'CaseSolution': default,
             'CaseTeamMember': default,
             'CaseTeamRole': default,
             'CaseTeamTemplate': default,
             'CaseTeamTemplateMember': default,
             'CaseTeamTemplateRecord': default,
+            'CategoryData': default,  # new
             'CategoryNode': default,
             'ChatterActivity': default,
             'ChatterExtension': default,
             'ChatterExtensionConfig': default,
-            'ClientBrowser': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'ClientBrowser': incremental_created_date,
             'CollaborationGroup': default,
             'CollaborationGroupFeed': default,
             'CollaborationGroupMember': default,
             'CollaborationGroupMemberRequest': default,
             'CollaborationInvitation': default,
+            'CommSubscription': default,
+            'CommSubscriptionChannelType': default,
+            'CommSubscriptionChannelTypeFeed': default,
+            'CommSubscriptionChannelTypeHistory': incremental_created_date,
+            'CommSubscriptionChannelTypeShare': incremental_last_modified,
+            'CommSubscriptionConsent': default,
+            'CommSubscriptionConsentFeed': default,
+            'CommSubscriptionConsentHistory': incremental_created_date,
+            'CommSubscriptionConsentShare': incremental_last_modified,
+            'CommSubscriptionFeed': default,
+            'CommSubscriptionHistory': incremental_created_date,
+            'CommSubscriptionShare': incremental_last_modified,
+            'CommSubscriptionTiming': default,
+            'CommSubscriptionTimingFeed': default,
+            'CommSubscriptionTimingHistory': incremental_created_date,
             'Community': default,
             'ConferenceNumber': default,
-            'ConnectedApplication': default_full,  # INSUFFICIENT_ACCESS
+            'ConnectedApplication': default,
+            'ConsumptionRate': default,  # new
+            'ConsumptionRateHistory': incremental_created_date,  # new
+            'ConsumptionSchedule': default,  # new
+            'ConsumptionScheduleFeed': default,  # new
+            'ConsumptionScheduleHistory': incremental_created_date,  # new
+            'ConsumptionScheduleShare': incremental_last_modified,  # new
             'Contact': default,
+            'ContactCleanInfo': default,  # new
             'ContactFeed': default,
-            'ContactHistory': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
-            'ContactShare': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'ContactHistory': incremental_created_date,
+            'ContactPointAddress': default,
+            'ContactPointAddressHistory': incremental_created_date,
+            'ContactPointAddressShare': incremental_last_modified,
+            'ContactPointConsent': default,
+            'ContactPointConsentHistory': incremental_created_date,
+            'ContactPointConsentShare': incremental_last_modified,
+            'ContactPointEmail': default,
+            'ContactPointEmailHistory': incremental_created_date,
+            'ContactPointEmailShare': incremental_last_modified,
+            'ContactPointPhone': default,
+            'ContactPointPhoneHistory': incremental_created_date,
+            'ContactPointPhoneShare': incremental_last_modified,
+            'ContactPointTypeConsent': default,
+            'ContactPointTypeConsentHistory': incremental_created_date,
+            'ContactPointTypeConsentShare': incremental_last_modified,
+            'ContactRequest': default,  # new
+            'ContactRequestShare': incremental_last_modified,  # new
+            'ContactShare': incremental_last_modified,
             'ContentAsset': default,
             'ContentDistribution': default,
             'ContentDistributionView': default,
             'ContentDocument': default,
             'ContentDocumentFeed': default,
-            'ContentDocumentHistory': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'ContentDocumentHistory': incremental_created_date,
+            'ContentDocumentSubscription': default_full,  # new
             'ContentFolder': default,
             'ContentFolderLink': default_full,
-            'ContentNote': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'ContentNotification': incremental_created_date,  # new
+            'ContentTagSubscription': default_full,  # new
+            'ContentUserSubscription': default_full,  # new
             'ContentVersion': default,
-            'ContentVersionHistory': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'ContentVersionComment': incremental_created_date,  # new
+            'ContentVersionHistory': incremental_created_date,
+            'ContentVersionRating': incremental_last_modified,  # new
             'ContentWorkspace': default,
             'ContentWorkspaceDoc': default,
-            'ContentWorkspaceMember': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'ContentWorkspaceMember': incremental_created_date,
             'ContentWorkspacePermission': default,
+            'ContentWorkspaceSubscription': default_full,  # new
             'Contract': default,
             'ContractContactRole': default,
             'ContractFeed': default,
-            'ContractHistory': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'ContractHistory': incremental_created_date,
+            'ContractLineItem': default,  # new
+            'ContractLineItemHistory': incremental_created_date,  # new
+            'ConversationEntry': default,  # new
+            'CorsWhitelistEntry': default,  # new
+            'CredentialStuffingEventStore': default,  # new
+            'CredentialStuffingEventStoreFeed': default,  # new
+            'CreditMemo': default,  # new
+            'CreditMemoFeed': default,  # new
+            'CreditMemoHistory': incremental_created_date,  # new
+            'CreditMemoInvApplication': default,  # new
+            'CreditMemoLine': default,  # new
+            'CreditMemoLineFeed': default,  # new
+            'CreditMemoLineHistory': incremental_created_date,  # new
+            'CreditMemoShare': incremental_last_modified,  # new
             'CronJobDetail': default_full,
-            'CronTrigger': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
-            'CustomBrand': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
-            'CustomBrandAsset': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'CronTrigger': incremental_created_date,
+            'CspTrustedSite': default,  # new
+            'CustomBrand': incremental_last_modified,
+            'CustomBrandAsset': incremental_last_modified,
+            'CustomHelpMenuItem': default,
+            'CustomHelpMenuSection': default,
+            'CustomHttpHeader': default,
+            'CustomNotificationType': default,
             'CustomObjectUserLicenseMetrics': default,
             'CustomPermission': default,
             'CustomPermissionDependency': default,
+            'DandBCompany': default,  # new
             'Dashboard': default,
             'DashboardComponent': default_full,
             'DashboardComponentFeed': default,
             'DashboardFeed': default,
+            'DataAssessmentFieldMetric': default,  # new
+            'DataAssessmentMetric': default,  # new
+            'DataAssessmentValueMetric': default,  # new
+            'DataUseLegalBasis': default,
+            'DataUseLegalBasisHistory': incremental_created_date,
+            'DataUseLegalBasisShare': incremental_last_modified,
+            'DataUsePurpose': default,
+            'DataUsePurposeHistory': incremental_created_date,
+            'DataUsePurposeShare': incremental_last_modified,
             'DatacloudAddress': default_full,
+            'DatacloudCompany': default_full,  # new
+            'DatacloudContact': default_full,  # new
+            'DatacloudDandBCompany': default_full,  # new
+            'DatacloudOwnedEntity': default,  # new
+            'DatacloudPurchaseUsage': default,  # new
+            'DeleteEvent': default,
+            'DigitalWallet': default,  # new
             'Document': default,
-            'DocumentAttachmentMap': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'DocumentAttachmentMap': incremental_created_date,
             'Domain': default,
             'DomainSite': default,
+            'DuplicateRecordItem': default,  # new
+            'DuplicateRecordSet': default,  # new
             'DuplicateRule': default,
+            'EmailCapture': default,  # new
+            'EmailDomainFilter': default,  # new
+            'EmailDomainKey': default,  # new
             'EmailMessage': default,
             'EmailMessageRelation': default,
+            'EmailRelay': default,  # new
             'EmailServicesAddress': default,
             'EmailServicesFunction': default,
             'EmailTemplate': default,
             'EmbeddedServiceDetail': default_full,
-            'EntityDefinition': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
-            'EntitySubscription': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'EmbeddedServiceLabel': default_full,
+            'EngagementChannelType': default,
+            'EngagementChannelTypeFeed': default,
+            'EngagementChannelTypeHistory': incremental_created_date,
+            'EngagementChannelTypeShare': incremental_last_modified,
+            'EnhancedLetterhead': default,
+            'EnhancedLetterheadFeed': default,
+            'Entitlement': default,  # new
+            'EntitlementContact': default,  # new
+            'EntitlementFeed': default,  # new
+            'EntitlementHistory': incremental_created_date,  # new
+            'EntitlementTemplate': default,  # new
+            'EntityDefinition': incremental_last_modified,
+            'EntityMilestone': default,  # new
+            'EntityMilestoneFeed': default,  # new
+            'EntityMilestoneHistory': incremental_created_date,  # new
+            'EntitySubscription': incremental_created_date,
             'Event': default,
             'EventBusSubscriber': default_full,
             'EventFeed': default,
+            'EventLogFile': default,  # new
             'EventRelation': default,
+            'ExpressionFilter': default,
+            'ExpressionFilterCriteria': default,
             'ExternalDataSource': default,
             'ExternalDataUserAuth': default,
             'ExternalEvent': default,
             'ExternalEventMapping': default,
-            'ExternalEventMappingShare': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'ExternalEventMappingShare': incremental_last_modified,
             'FeedAttachment': default_full,
             'FeedComment': default,
             'FeedItem': default,
+            'FeedPollChoice': incremental_created_date,  # new
+            'FeedPollVote': incremental_last_modified,  # new
             'FeedRevision': default,
             'FieldPermissions': default,
+            'FieldSecurityClassification': default,  # new
+            'FileSearchActivity': default,  # new
+            'FinanceBalanceSnapshot': default,  # new
+            'FinanceBalanceSnapshotShare': incremental_last_modified,  # new
+            'FinanceTransaction': default,  # new
+            'FinanceTransactionShare': incremental_last_modified,  # new
             'FiscalYearSettings': default,
+            'FlowDefinitionView': incremental_last_modified,
             'FlowInterview': default,
-            'FlowInterviewShare': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'FlowInterviewLog': default,
+            'FlowInterviewLogEntry': default,
+            'FlowInterviewLogShare': incremental_last_modified,
+            'FlowInterviewShare': incremental_last_modified,
+            'FlowRecordRelation': default,
+            'FlowStageRelation': default,
             'Folder': default,
-            'ForecastingAdjustment': default,
-            'ForecastingCategoryMapping': default,
-            'ForecastingDisplayedFamily': default,
-            'ForecastingFact': default,
-            'ForecastingItem': default,
-            'ForecastingOwnerAdjustment': default,
-            'ForecastingQuota': default,
-            'ForecastingShare': default,
-            'ForecastingType': default,
-            'ForecastingTypeToCategory': default,
-            'ForecastingUserPreference': default_full,
+            'FormulaFunction': default_full,
+            'FormulaFunctionAllowedType': default_full,
+            'FormulaFunctionCategory': default_full,
             'GrantedByLicense': default,
             'Group': default,
             'GroupMember': default,
+            'GtwyProvPaymentMethodType': default,  # new
             'Holiday': default,
+            'IPAddressRange': default,  # new
             'Idea': default,
+            'IdentityProviderEventStore': incremental_created_date,  # new
+            'IdentityVerificationEvent': incremental_created_date,  # new
+            'IdpEventLog': default_full,  # new
+            'IframeWhiteListUrl': default,
+            'Image': default,  # new
+            'ImageFeed': default,  # new
+            'ImageHistory': incremental_created_date,  # new
+            'ImageShare': incremental_last_modified,  # new
+            'Individual': default,
+            'IndividualHistory': incremental_created_date,
+            'IndividualShare': incremental_last_modified,
             'InstalledMobileApp': default,
+            'Invoice': default,  # new
+            'InvoiceFeed': default,  # new
+            'InvoiceHistory': incremental_created_date,  # new
+            'InvoiceLine': default,  # new
+            'InvoiceLineFeed': default,  # new
+            'InvoiceLineHistory': incremental_created_date,  # new
+            'InvoiceShare': incremental_last_modified,  # new
             'KnowledgeableUser': default,
             'Lead': default,
+            'LeadCleanInfo': default,  # new
             'LeadFeed': default,
-            'LeadHistory': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
-            'LeadShare': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'LeadHistory': incremental_created_date,
+            'LeadShare': incremental_last_modified,
             'LeadStatus': default,
+            'LegalEntity': default,  # new
+            'LegalEntityFeed': default,  # new
+            'LegalEntityHistory': incremental_created_date,  # new
+            'LegalEntityShare': incremental_last_modified,  # new
+            'LightningExitByPageMetrics': default,  # new
+            'LightningExperienceTheme': default,
+            'LightningOnboardingConfig': default,
+            'LightningToggleMetrics': default,  # new
+            'LightningUriEvent': default_full,  # new
+            'LightningUsageByAppTypeMetrics': default,  # new
+            'LightningUsageByBrowserMetrics': default,  # new
+            'LightningUsageByFlexiPageMetrics': default,  # new
+            'LightningUsageByPageMetrics': default,  # new
+            'ListEmail': default,  # new
+            'ListEmailIndividualRecipient': default,  # new
+            'ListEmailRecipientSource': default,  # new
+            'ListEmailShare': incremental_last_modified,  # new
             'ListView': default,
             'ListViewChart': default,
+            'ListViewEvent': incremental_created_date,  # new
+            'LiveChatSensitiveDataRule': default,  # new
             'Location': default,
             'LocationFeed': default,
-            'LocationHistory': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
-            'LocationShare': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
-            'LoginHistory': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LoginTime'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
-            'LoginIp': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'LocationGroup': default,  # new
+            'LocationGroupAssignment': default,  # new
+            'LocationGroupFeed': default,  # new
+            'LocationGroupHistory': incremental_created_date,  # new
+            'LocationGroupShare': incremental_last_modified,  # new
+            'LocationHistory': incremental_created_date,
+            'LocationShare': incremental_last_modified,
+            'LoginAsEvent': incremental_created_date,  # new
+            'LoginEvent': default_full,  # new
+            'LoginGeo': default,  # new
+            'LoginHistory': {self.PRIMARY_KEYS: {'Id'}, self.REPLICATION_KEYS: {'LoginTime'},self.REPLICATION_METHOD: self.INCREMENTAL,},
+            'LoginIp': incremental_created_date,
+            'LogoutEvent': default_full,  # new
+            'MLField': default,  # new
+            'MLPredictionDefinition': default,  # new
             'Macro': default,
-            'MacroHistory': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'MacroHistory': incremental_created_date,
             'MacroInstruction': default,
-            'MacroShare': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'MacroShare': incremental_last_modified,
+            'MacroUsage': default,
+            'MacroUsageShare': incremental_last_modified,
             'MailmergeTemplate': default,
             'MatchingInformation': default,
             'MatchingRule': default,
             'MatchingRuleItem': default,
+            'MessagingChannel': default,  # new
+            'MessagingChannelSkill': default,  # new
+            'MessagingConfiguration': default,  # new
+            'MessagingDeliveryError': default,  # new
+            'MessagingEndUser': default,  # new
+            'MessagingEndUserHistory': incremental_created_date,  # new
+            'MessagingEndUserShare': incremental_last_modified,  # new
+            'MessagingLink': default,  # new
+            'MessagingSession': default,  # new
+            'MessagingSessionFeed': default,  # new
+            'MessagingSessionHistory': incremental_created_date,  # new
+            'MessagingSessionShare': incremental_last_modified,  # new
+            'MessagingTemplate': default,  # new
+            'MilestoneType': default,  # new
             'MobileApplicationDetail': default,
+            'MsgChannelLanguageKeyword': default,  # new
+            'MutingPermissionSet': default,
+            'MyDomainDiscoverableLogin': default,
             'NamedCredential': default,
             'Note': default,
-            'OauthToken': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'OauthCustomScope': default,  # new
+            'OauthCustomScopeApp': default,  # new
+            'OauthToken': incremental_created_date,
             'ObjectPermissions': default,
+            'OnboardingMetrics': default,
+            'OperatingHours': default,  # new
+            'OperatingHoursFeed': default,  # new
             'Opportunity': default,
             'OpportunityCompetitor': default,
             'OpportunityContactRole': default,
             'OpportunityFeed': default,
-            'OpportunityFieldHistory': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'OpportunityFieldHistory': incremental_created_date,
             'OpportunityHistory': default,
             'OpportunityLineItem': default,
             'OpportunityPartner': default,
-            'OpportunityShare': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'OpportunityShare': incremental_last_modified,
             'OpportunityStage': default,
             'Order': default,
             'OrderFeed': default,
-            'OrderHistory': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'OrderHistory': incremental_created_date,
             'OrderItem': default,
             'OrderItemFeed': default,
-            'OrderItemHistory': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
-            'OrderShare': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'OrderItemHistory': incremental_created_date,
+            'OrderShare': incremental_last_modified,
+            'OrgDeleteRequest': default,  # new
+            'OrgDeleteRequestShare': incremental_last_modified,  # new
+            'OrgMetric': default,  # new
+            'OrgMetricScanResult': default,  # new
+            'OrgMetricScanSummary': default,  # new
             'OrgWideEmailAddress': default,
             'Organization': default,
+            'PackageLicense': default,  # new
             'Partner': default,
+            'PartyConsent': default,
+            'PartyConsentFeed': default,
+            'PartyConsentHistory': incremental_created_date,
+            'PartyConsentShare': incremental_last_modified,
+            'Payment': default,  # new
+            'PaymentAuthAdjustment': default,  # new
+            'PaymentAuthorization': default,  # new
+            'PaymentGateway': default,  # new
+            'PaymentGatewayLog': default,  # new
+            'PaymentGatewayProvider': default,  # new
+            'PaymentGroup': default,  # new
+            'PaymentLineInvoice': default,  # new
+            'PaymentMethod': default,  # new
             'Period': default,
             'PermissionSet': default,
             'PermissionSetAssignment': default,
@@ -482,16 +574,17 @@ class SalesforceBaseTest(unittest.TestCase):
             'PermissionSetGroupComponent': default,
             'PermissionSetLicense': default,
             'PermissionSetLicenseAssign': default,
+            'PermissionSetTabSetting': default,
             'PlatformCachePartition': default,
             'PlatformCachePartitionType': default,
+            'PlatformEventUsageMetric': default_full,
             'Pricebook2': default,
-            'Pricebook2History': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'Pricebook2History': incremental_created_date,
             'PricebookEntry': default,
+            'PricebookEntryHistory': incremental_created_date,
             'ProcessDefinition': default,
+            'ProcessException': default,  # new
+            'ProcessExceptionShare': incremental_last_modified,  # new
             'ProcessInstance': default,
             'ProcessInstanceNode': default,
             'ProcessInstanceStep': default,
@@ -499,173 +592,255 @@ class SalesforceBaseTest(unittest.TestCase):
             'ProcessNode': default,
             'Product2': default,
             'Product2Feed': default,
-            'Product2History': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'Product2History': incremental_created_date,
+            'ProductConsumptionSchedule': default,  # new
+            'ProductEntitlementTemplate': default,  # new
             'Profile': default,
-            'ProfileSkill': default,
-            'ProfileSkillEndorsement': default,
-            'ProfileSkillEndorsementFeed': default,
-            'ProfileSkillEndorsementHistory': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
-            'ProfileSkillFeed': default,
-            'ProfileSkillHistory': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
-            'ProfileSkillShare': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
-            'ProfileSkillUser': default,
-            'ProfileSkillUserFeed': default,
-            'ProfileSkillUserHistory': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'Prompt': default,
+            'PromptAction': default,  # new
+            'PromptActionShare': incremental_last_modified,  # new
+            'PromptError': default,  # new
+            'PromptErrorShare': incremental_last_modified,  # new
+            'PromptVersion': default,
             'Publisher': default_full,
+            'PushTopic': default,  # new
             'QueueSobject': default,
             'QuickText': default,
-            'QuickTextHistory': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
-            'QuickTextShare': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
-            'Quote': default,
-            'QuoteDocument': default,
-            'QuoteFeed': default,
-            'QuoteLineItem': default,
-            'QuoteShare': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'QuickTextHistory': incremental_created_date,
+            'QuickTextShare': incremental_last_modified,
+            'QuickTextUsage': default,
+            'QuickTextUsageShare': incremental_last_modified,
+            'Recommendation': default,
+            'RecordAction': default,
             'RecordType': default,
+            'RedirectWhitelistUrl': default,
+            'Refund': default,  # new
+            'RefundLinePayment': default,  # new
             'Report': default,
+            'ReportAnomalyEventStore': default,  # new
+            'ReportAnomalyEventStoreFeed': default,  # new
+            'ReportEvent': default_full,  # new
             'ReportFeed': default,
+            'ResourceAbsence': default,  # new
+            'ResourceAbsenceFeed': default,  # new
+            'ResourceAbsenceHistory': incremental_created_date,  # new
+            'ResourcePreference': default,  # new
+            'ResourcePreferenceFeed': default,  # new
+            'ResourcePreferenceHistory': incremental_created_date,  # new
+            'ReturnOrder': default,  # new
+            'ReturnOrderFeed': default,  # new
+            'ReturnOrderHistory': incremental_created_date,  # new
+            'ReturnOrderItemAdjustment': default,  # new
+            'ReturnOrderItemTax': default,  # new
+            'ReturnOrderLineItem': default,  # new
+            'ReturnOrderLineItemFeed': default,  # new
+            'ReturnOrderLineItemHistory': incremental_created_date,  # new
+            'ReturnOrderShare': incremental_last_modified,  # new
+            'SPSamlAttributes': default,  # new
             'SamlSsoConfig': default,
             'Scontrol': default,
+            'SearchPromotionRule': default,  # new
+            'SecurityCustomBaseline': default,  # new
+            'ServiceAppointment': default,  # new
+            'ServiceAppointmentFeed': default,  # new
+            'ServiceAppointmentHistory': incremental_created_date,  # new
+            'ServiceAppointmentShare': incremental_last_modified,  # new
+            'ServiceAppointmentStatus': default,  # new
+            'ServiceContract': default,  # new
+            'ServiceContractFeed': default,  # new
+            'ServiceContractHistory': incremental_created_date,  # new
+            'ServiceContractShare': incremental_last_modified,  # new
+            'ServiceResource': default,  # new
+            'ServiceResourceFeed': default,  # new
+            'ServiceResourceHistory': incremental_created_date,  # new
+            'ServiceResourceShare': incremental_last_modified,  # new
+            'ServiceResourceSkill': default,  # new
+            'ServiceResourceSkillFeed': default,  # new
+            'ServiceResourceSkillHistory': incremental_created_date,  # new
+            'ServiceSetupProvisioning': default,  # new
+            'ServiceTerritory': default,  # new
+            'ServiceTerritoryFeed': default,  # new
+            'ServiceTerritoryHistory': incremental_created_date,  # new
+            'ServiceTerritoryMember': default,  # new
+            'ServiceTerritoryMemberFeed': default,  # new
+            'ServiceTerritoryMemberHistory': incremental_created_date,  # new
+            'ServiceTerritoryShare': incremental_last_modified,  # new
+            'ServiceTerritoryWorkType': default,  # new
+            'ServiceTerritoryWorkTypeFeed': default,  # new
+            'ServiceTerritoryWorkTypeHistory': incremental_created_date,  # new
+            'SessionHijackingEventStore': default,  # new
+            'SessionHijackingEventStoreFeed': default,  # new
             'SessionPermSetActivation': default,
-            'SetupAuditTrail': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'SetupAssistantStep': default,  # new
+            'SetupAuditTrail': incremental_created_date,
             'SetupEntityAccess': default,
             'Site': default,
             'SiteFeed': default,
-            'SiteHistory': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'SiteHistory': incremental_created_date,
+            'SiteIframeWhiteListUrl': default,
+            'SiteRedirectMapping': default,
+            'Skill': default,  # new
+            'SkillRequirement': default,  # new
+            'SkillRequirementFeed': default,  # new
+            'SkillRequirementHistory': incremental_created_date,  # new
+            'SlaProcess': default,  # new
             'Solution': default,
             'SolutionFeed': default,
-            'SolutionHistory': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'SolutionHistory': incremental_created_date,
             'Stamp': default,
             'StampAssignment': default,
             'StaticResource': default,
+            'StreamingChannel': default,  # new
+            'StreamingChannelShare': incremental_last_modified,  # new
+            'TabDefinition': default_full,
             'Task': default,
             'TaskFeed': default,
-            'TaskRelation': default,
             'TenantUsageEntitlement': default,
             'TestSuiteMembership': default,
             'ThirdPartyAccountLink': default_full,
+            'ThreatDetectionFeedback': default,  # new
+            'ThreatDetectionFeedbackFeed': default,  # new
+            'TimeSlot': default,  # new
             'TodayGoal': default,
-            'TodayGoalShare': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'TodayGoalShare': incremental_last_modified,
             'Topic': default,
             'TopicAssignment': default,
             'TopicFeed': default,
+            'TopicUserEvent': incremental_created_date,  # new
+            'TransactionSecurityPolicy': default,  # new
+            'Translation': default,
+            'UiFormulaCriterion': default,
+            'UiFormulaRule': default,
+            'UriEvent': default_full,  # new
             'User': default,
             'UserAppInfo': default,
             'UserAppMenuCustomization': default,
-            'UserAppMenuCustomizationShare': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'UserAppMenuCustomizationShare': incremental_last_modified,
             'UserAppMenuItem': default_full,
+            'UserEmailPreferredPerson': default,
+            'UserEmailPreferredPersonShare': incremental_last_modified,
             'UserFeed': default,
             'UserLicense': default,
             'UserListView': default,
             'UserListViewCriterion': default,
-            'UserLogin': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'UserLogin': incremental_last_modified,
+            'UserPackageLicense': default,  # new
             'UserPermissionAccess': default_full,
             'UserPreference': default,
+            'UserProvAccount': default,  # new
+            'UserProvAccountStaging': default,  # new
+            'UserProvMockTarget': default,  # new
+            'UserProvisioningConfig': default,  # new
+            'UserProvisioningLog': default,  # new
+            'UserProvisioningRequest': default,  # new
+            'UserProvisioningRequestShare': incremental_last_modified,  # new
             'UserRole': default,
-            'UserShare': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
+            'UserSetupEntityAccess': default_full,
+            'UserShare': incremental_last_modified,
+            'VerificationHistory': default,  # new
+            'VisualforceAccessMetrics': default,  # new
+            'WaveAutoInstallRequest': default,
             'WaveCompatibilityCheckItem': default,
-            'WorkAccess': default,
-            'WorkAccessShare': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
-            'WorkBadge': default,
-            'WorkBadgeDefinition': default,
-            'WorkBadgeDefinitionFeed': default,
-            'WorkBadgeDefinitionHistory': {
-                self.REPLICATION_KEYS: {'CreatedDate'},
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
-            'WorkBadgeDefinitionShare': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
-            'WorkThanks': default,
-            'WorkThanksShare': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
-            'cbit__ClearbitLog__c': default,
-            'cbit__ClearbitProspectorSearch__c': default,
-            'cbit__ClearbitRequest__c': default,
-            'cbit__ClearbitStats__c': default,
-            'cbit__Clearbit_User_Settings__c': default,
-            'cbit__Clearbit__c': default,
-            'cbit__Mapping__Share': {
-                self.PRIMARY_KEYS: {'Id'},
-                self.REPLICATION_KEYS: {'LastModifiedDate'},
-                self.REPLICATION_METHOD: self.INCREMENTAL,
-            },
-            'cbit__Mapping__c': default,
+            'WebLink': default,  # new
+            'WorkOrder': default,  # new
+            'WorkOrderFeed': default,  # new
+            'WorkOrderHistory': incremental_created_date,  # new
+            'WorkOrderLineItem': default,  # new
+            'WorkOrderLineItemFeed': default,  # new
+            'WorkOrderLineItemHistory': incremental_created_date,  # new
+            'WorkOrderLineItemStatus': default,  # new
+            'WorkOrderShare': incremental_last_modified,  # new
+            'WorkOrderStatus': default,  # new
+            'WorkType': default,  # new
+            'WorkTypeFeed': default,  # new
+            'WorkTypeGroup': default,  # new
+            'WorkTypeGroupFeed': default,  # new
+            'WorkTypeGroupHistory': incremental_created_date,  # new
+            'WorkTypeGroupMember': default,  # new
+            'WorkTypeGroupMemberFeed': default,  # new
+            'WorkTypeGroupMemberHistory': incremental_created_date,  # new
+            'WorkTypeGroupShare': incremental_last_modified,  # new
+            'WorkTypeHistory': incremental_created_date,  # new
+            'WorkTypeShare': incremental_last_modified,  # new
+            'RecentlyViewed': default_full,  # new TODO verify this is not a bug
+            'TaskPriority': default,  # new TODO
+            'DeclinedEventRelation': default,  # new TODO
+            'AcceptedEventRelation': default,  # new TODO
+            'OrderStatus': default,  # new TODO
+            'SolutionStatus': default,  # new TODO
+            'CaseStatus': default,  # new TODO
+            'TaskStatus': default,  # new TODO
+            'PartnerRole': default,  # new TODO
+            'ContractStatus': default,  # new TODO
+            'UndecidedEventRelation': default,  # new TODO
+            # Newly discovered as of 2/12/2022
+            'BriefcaseAssignment': default,
+            'BriefcaseDefinition': default,
+            'BriefcaseRule': default,
+            'BriefcaseRuleFilter': default,
+            'CartCheckoutSession': default,
+            'CartDeliveryGroup': default,
+            'CartItem': default,
+            'CartRelatedItem': default,
+            'CartTax': default,
+            'CartValidationOutput': default,
+            'OperatingHoursHoliday': default,
+            'OperatingHoursHolidayFeed': default,
+            'PermissionSetEventStore': incremental_created_date,
+            'Shift': default,
+            'ShiftFeed': default,
+            'ShiftHistory': incremental_created_date,
+            'ShiftShare': incremental_last_modified,
+            'ShiftStatus': default,
+            'WebCart': default,
+            'WebCartHistory': incremental_created_date,
+            'WebCartShare': incremental_last_modified,
+            'WebStore': default,
+            'WebStoreShare': incremental_last_modified,
+            'WorkPlan': default,
+            'WorkPlanFeed': default,
+            'WorkPlanHistory': incremental_created_date,
+            'WorkPlanShare': incremental_last_modified,
+            'WorkPlanTemplate': default,
+            'WorkPlanTemplateEntry': default,
+            'WorkPlanTemplateEntryFeed': default,
+            'WorkPlanTemplateEntryHistory': incremental_created_date,
+            'WorkPlanTemplateFeed': default,
+            'WorkPlanTemplateHistory': incremental_created_date,
+            'WorkPlanTemplateShare': incremental_last_modified,
+            'WorkStep': default,
+            'WorkStepFeed': default,
+            'WorkStepHistory': incremental_created_date,
+            'WorkStepStatus': default,
+            'WorkStepTemplate': default,
+            'WorkStepTemplateFeed': default,
+            'WorkStepTemplateHistory': incremental_created_date,
+            'WorkStepTemplateShare': incremental_last_modified,
+        }
+
+    def rest_only_streams(self):
+        """A group of streams that is only discovered when the REST API is in use."""
+        return {
+            'CaseStatus',
+            'DeclinedEventRelation',
+            'RecentlyViewed',
+            'SolutionStatus',
+            'TaskStatus',
+            'OrderStatus',
+            'AcceptedEventRelation',
+            'ContractStatus',
+            'PartnerRole',
+            'TaskPriority',
+            'UndecidedEventRelation',
         }
 
     def expected_streams(self):
         """A set of expected stream names"""
-        return set(self.expected_metadata().keys())
+        streams = set(self.expected_metadata().keys())
+
+        if self.salesforce_api == 'BULK':
+            return streams.difference(self.rest_only_streams())
+        return streams
 
     def child_streams(self):
         """
@@ -746,11 +921,6 @@ class SalesforceBaseTest(unittest.TestCase):
 
         found_catalogs = menagerie.get_catalogs(conn_id)
         self.assertGreater(len(found_catalogs), 0, msg="unable to locate schemas for connection {}".format(conn_id))
-
-        found_catalog_names = set(map(lambda c: c['tap_stream_id'], found_catalogs))
-
-        self.assertSetEqual(self.expected_streams(), found_catalog_names, msg="discovered schemas do not match")
-        print("discovered schemas are OK")
 
         return found_catalogs
 
@@ -938,8 +1108,15 @@ class SalesforceBaseTest(unittest.TestCase):
             'SiteDetail',
             'UserEntityAccess',
             'UserFieldAccess',
-            'Vote'
+            'Vote',
+            'RecordActionHistory',
+            'FlowVersionView',
+            'FlowVariableView',
+            'AppTabMember',
+            'ColorDefinition',
+            'IconDefinition',
         }
+
         return unsupported_streams
 
     def get_unsupported_by_bulk_api(self):
@@ -960,7 +1137,16 @@ class SalesforceBaseTest(unittest.TestCase):
             'TaskPriority',
             'TaskWhoRelation',
             'TaskStatus',
-            'UndecidedEventRelation'
+            'UndecidedEventRelation',
+            'OrderStatus',
+            'WorkOrderStatus',
+            'WorkOrderLineItemStatus',
+            'ServiceAppointmentStatus',
+            'ServiceAppointmentStatus',
+            'FieldSecurityClassification',
+            # BUG_TODO | the following streams are undocumented
+            'WorkStepStatus',
+            'ShiftStatus',
         }
 
         return unsupported_streams_bulk_only | unsupported_streams_rest
